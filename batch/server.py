@@ -39,7 +39,7 @@ class Job(object):
 
         log.info('created pod name: {} for job {}'.format(self._pod_name, self.id))
 
-    def _cancel_pod(self):
+    def _delete_pod(self):
         if self._pod_name:
             try:
                 v1.delete_namespaced_pod(self._pod_name, 'default', kube.client.V1DeleteOptions())
@@ -85,8 +85,19 @@ class Job(object):
     def cancel(self):
         if self.is_complete():
             return
-        self._cancel_pod()
+        self._delete_pod()
         self.set_state('Cancelled')
+
+    def delete(self):
+        # remove from structures
+        del job_id_job[self.id]
+        if self._pod_name:
+            del pod_name_job[self._pod_name]
+        if self.batch_id:
+            batch = batch_id_batch[batch_id]
+            batch.remove(self)
+
+        self._delete_pod()
 
     def is_complete(self):
         return self._state == 'Complete' or self._state == 'Cancelled'
@@ -172,6 +183,14 @@ def get_job(job_id):
     if not job:
         abort(404)
     return jsonify(job.to_json())
+
+@app.route('/jobs/<int:job_id>/delete', methods=['DELETE'])
+def delete_job(job_id):
+    job = job_id_job.get(job_id)
+    if not job:
+        abort(404)
+    job.delete()
+    return jsonify({})
 
 @app.route('/jobs/<int:job_id>/cancel', methods=['POST'])
 def cancel_job(job_id):
