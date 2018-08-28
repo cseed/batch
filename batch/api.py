@@ -27,7 +27,7 @@ def get_job(url, job_id):
     return r.json()
 
 def delete_job(url, job_id):
-    r = requests.post(url + '/jobs/{}/delete'.format(job_id))
+    r = requests.delete(url + '/jobs/{}/delete'.format(job_id))
     r.raise_for_status()
     return r.json()
 

@@ -44,7 +44,7 @@ class Job(object):
             try:
                 v1.delete_namespaced_pod(self._pod_name, 'default', kube.client.V1DeleteOptions())
             except kube.client.rest.ApiException as e:
-                if e.status == 404 and e.reason == 'NotFound':
+                if e.status == 404:
                     pass
                 else:
                     raise
@@ -91,8 +91,6 @@ class Job(object):
     def delete(self):
         # remove from structures
         del job_id_job[self.id]
-        if self._pod_name:
-            del pod_name_job[self._pod_name]
         if self.batch_id:
             batch = batch_id_batch[batch_id]
             batch.remove(self)
@@ -118,7 +116,7 @@ class Job(object):
 
         if self.callback:
             try:
-                requests.post(self.callback, json = self.to_json())
+                requests.post(self.callback, json = self.to_json(), timeout=120)
             except requests.exceptions.RequestException as re:
                 id = self.id
                 log.warn(f'callback for job {id} failed due to an error, I will not retry. Error: {re}')
@@ -260,32 +258,12 @@ def delete_batch(batch_id):
     batch.delete()
     return jsonify({})
 
-running = True
-kube_watch = None
-
-@app.route('/shutdown', methods=['POST'])
-def shutdown():
-    global running, kube_watch
-
-    running = False
-
-    f = request.environ.get('werkzeug.server.shutdown')
-    if f is None:
-        raise RuntimeError('Not running with the Werkzeug Server')
-    f()
-
-    kube_watch.stop()
-
-    return jsonify({})
-
 def run_forever(target, *args, **kwargs):
-    global running
-    
     # target should be a function
     target_name = target.__name__
 
     expected_retry_interval_ms = 15 * 1000 # 15s
-    while running:
+    while True:
         start = time.time()
         try:
             log.info(f'run_forever: run target {target_name}')
@@ -302,13 +280,11 @@ def run_forever(target, *args, **kwargs):
             time.sleep(t / 1000.0)
 
 def flask_event_loop():
-    app.run(debug=True, host='0.0.0.0', use_reloader=False)
+    app.run(threaded=False, host='0.0.0.0')
 
 def kube_event_loop():
-    global kube_watch
-
-    kube_watch = kube.watch.Watch()
-    stream = kube_watch.stream(v1.list_namespaced_pod, 'default', timeout_seconds=1)
+    w = kube.watch.Watch()
+    stream = w.stream(v1.list_namespaced_pod, 'default')
     for event in stream:
         event_type = event['type']
         pod = event['object']
