@@ -351,6 +351,8 @@ def polling_event_loop():
         try:
            r = requests.post('http://127.0.0.1:5000/refresh_k8s_state', timeout=120)
            r.raise_for_status()
+        except requests.HTTPError as e: 
+            log.error(f'Could not poll due to exception: {e}, text: {e.response.text}')
         except Exception as e:
             log.error(f'Could not poll due to exception: {e}')
             pass
