@@ -13,7 +13,7 @@ fi
 make push-hail-ci-build-image
 
 sed -e "s,@sha,$SHA," \
-    -e "s,@image@,`cat hail-ci-build-image`," \
+    -e "s,@image@,$(cat hail-ci-build-image)," \
     < deployment.yaml.in > deployment.yaml
 
 kubectl delete -f deployment.yaml
