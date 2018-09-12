@@ -2,6 +2,11 @@ set -ex
 
 cd batch
 
+gcloud auth activate-service-account \
+  --key-file=/secrets/gcr-push-service-account-key.json
+
+gcloud auth configure-docker
+
 SHA=$(git rev-parse --short=12 HEAD)
 
 # get sha label of batch deployment
