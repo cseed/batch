@@ -11,8 +11,25 @@ import kubernetes as kube
 import cerberus
 import requests
 
-logging.basicConfig(level=logging.INFO)
+fmt = logging.Formatter(
+    # NB: no space after levename because WARNING is so long
+    '%(levelname)s\t| %(asctime)s \t| %(filename)s \t| %(funcName)s:%(lineno)d | '
+    '%(message)s')
+
+fh = logging.FileHandler('batch.log')
+fh.setLevel(logging.INFO)
+fh.setFormatter(fmt)
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(fmt)
+
 log = logging.getLogger('batch')
+log.setLevel(logging.INFO)
+
+logging.basicConfig(
+    handlers=[fh, ch],
+    level=logging.INFO)
 
 REFRESH_INTERVAL_IN_SECONDS = int(os.environ.get('REFRESH_INTERVAL_IN_SECONDS', 5 * 60))
 
@@ -304,6 +321,8 @@ def pod_changed():
 
 @app.route('/refresh_k8s_state', methods=['POST'])
 def refresh_k8s_state():
+    log.info('started k8s state refresh')
+
     pods = v1.list_namespaced_pod(
         'default',
         label_selector=f'app=batch-job,hail.is/batch-instance={instance_id}')
@@ -320,6 +339,8 @@ def refresh_k8s_state():
     for pod_name, job in pod_name_job.items():
         if pod_name not in seen_pods:
             update_job_with_pod(job, None)
+
+    log.info('k8s state refresh complete')
 
     return '', 204
 
