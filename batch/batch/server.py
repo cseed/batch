@@ -144,14 +144,13 @@ class Job(object):
         self.set_state('Complete')
 
         if self.callback:
-            def do_callback():
+            def f(id, callback, json):
                 try:
-                    requests.post(self.callback, json = self.to_json(), timeout=120)
+                    requests.post(callback, json = json, timeout=120)
                 except requests.exceptions.RequestException as re:
-                    id = self.id
                     log.warn(f'callback for job {id} failed due to an error, I will not retry. Error: {re}')
 
-            threading.Thread(target=do_callback).start()
+            threading.Thread(target=f, args=(self.id, self.callback, self.to_json())).start()
 
     def to_json(self):
         result = {
