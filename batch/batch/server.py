@@ -96,10 +96,12 @@ class Job(object):
                     return v1.read_namespaced_pod_log(self._pod_name, 'default')
                 except:
                     pass
-        else:
-            assert self.is_complete()
+        elif self._state == 'Complete':
             p = _log_path(self.id)
             return _read_file(p)
+        else:
+            asert self._state == 'Cancelled'
+            return None
 
     def __init__(self, pod_spec, batch_id, attributes, callback):
         self.id = next_id()
