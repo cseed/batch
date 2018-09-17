@@ -100,7 +100,7 @@ class Job(object):
             p = _log_path(self.id)
             return _read_file(p)
         else:
-            asert self._state == 'Cancelled'
+            assert self._state == 'Cancelled'
             return None
 
     def __init__(self, pod_spec, batch_id, attributes, callback):
